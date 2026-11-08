@@ -10,16 +10,25 @@ from .errors import JqcliError, error_payload
 
 
 def write_json(payload: Any, *, err: bool = False) -> None:
-    text = json.dumps(payload, ensure_ascii=False, indent=2)
-    stream = sys.stderr if err else sys.stdout
-    stream.write(text + "\n")
+    _write_json(payload, err=err, compact=False)
 
 
 def write_json_line(payload: Any, *, err: bool = False) -> None:
-    text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    _write_json(payload, err=err, compact=True)
+
+
+def _write_json(payload: Any, *, err: bool, compact: bool) -> None:
     stream = sys.stderr if err else sys.stdout
-    stream.write(text + "\n")
-    stream.flush()
+    indent = None if compact else 2
+    separators = (",", ":") if compact else None
+    text = json.dumps(payload, ensure_ascii=False, indent=indent, separators=separators)
+    try:
+        stream.write(text + "\n")
+    except UnicodeEncodeError:
+        text = json.dumps(payload, ensure_ascii=True, indent=indent, separators=separators)
+        stream.write(text + "\n")
+    if compact:
+        stream.flush()
 
 
 def write_error(error: JqcliError, *, json_format: bool) -> None:
