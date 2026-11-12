@@ -17,6 +17,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+sms = [
+  "playwright>=1.49,<2",
+]
 test = [
   "pytest>=8.0",
 ]

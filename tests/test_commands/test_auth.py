@@ -122,3 +122,43 @@ def test_auth_status_reads_token_from_env_file(tmp_path):
 
     assert result.exit_code == 0
     assert json.loads(result.output)["authenticated"] is True
+
+
+def test_sms_login_remembers_phone_and_reuses_session_until_expiry(monkeypatch, tmp_path):
+    phone = "13800000000"
+    login_phones = []
+    session_checks = iter(["sid=first", None])
+
+    def fake_login(number, *, timeout, on_ready):
+        login_phones.append(number)
+        on_ready()
+        return phone, "sid=first" if len(login_phones) == 1 else "sid=renewed"
+
+    def fake_reuse(cookie, *, timeout):
+        assert cookie == "sid=first"
+        return next(session_checks)
+
+    monkeypatch.setattr("jqcli.commands.auth.login_with_sms", fake_login)
+    monkeypatch.setattr("jqcli.commands.auth.reusable_session", fake_reuse)
+    monkeypatch.delenv("JQCLI_TOKEN", raising=False)
+    monkeypatch.delenv("JQCLI_COOKIE", raising=False)
+    config = tmp_path / "config.json"
+    runner = CliRunner()
+    args = ["--config", str(config), "--env-file", str(tmp_path / "missing.env"), "--format", "json"]
+
+    first = runner.invoke(main, args + ["auth", "login", "--sms"])
+    reused = runner.invoke(main, args + ["--non-interactive", "auth", "login", "--sms"])
+    expired = runner.invoke(main, args + ["auth", "login", "--sms"])
+    for result, expected in [(first, False), (reused, True), (expired, False)]:
+        assert result.exit_code == 0, result.exception
+        assert json.loads(result.stdout) == {"ok": True, "credential": "cookie", "reused": expected}
+        assert phone not in result.stdout
+        assert "sid=" not in result.output
+    assert login_phones == [None, phone]
+    assert json.loads(config.read_text(encoding="utf-8"))["cookie"] == "sid=renewed"
+    status = runner.invoke(main, args + ["auth", "status"])
+    assert json.loads(status.stdout)["credential_source"] == "cookie"
+    other_site = runner.invoke(main, args + ["--api-base", "https://example.test", "auth", "status"])
+    assert json.loads(other_site.stdout)["authenticated"] is False
+    assert runner.invoke(main, args + ["auth", "logout"]).exit_code == 0
+    assert json.loads(config.read_text(encoding="utf-8")) == {"sms_phone": phone}

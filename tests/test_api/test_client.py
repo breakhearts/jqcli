@@ -457,6 +457,19 @@ def test_client_maps_error_status(status_code, error_type):
         client.get("/x")
 
 
+def test_client_reports_gateway_forbidden_as_api_error():
+    client = make_client(
+        lambda request: httpx.Response(
+            403,
+            html="<html><center><h1>403 Forbidden</h1></center><hr><center>nginx</center></html>",
+        )
+    )
+
+    with pytest.raises(ApiError, match="服务端网关拒绝访问") as caught:
+        client.get("/private")
+    assert caught.value.details == {"status_code": 403}
+
+
 def test_client_maps_login_redirect_to_not_authenticated():
     client = make_client(
         lambda request: httpx.Response(302, headers={"location": "/user/login/index"})

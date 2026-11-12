@@ -125,6 +125,12 @@ class ApiClient:
         except httpx.RequestError as exc:
             raise NetworkError() from exc
         self._remember_initial_cookie_mutations(response)
+        if (
+            response.status_code == 403
+            and b"<h1>403 Forbidden</h1>" in response.content
+            and (b"<center>nginx</center>" in response.content or b"<center>openresty</center>" in response.content)
+        ):
+            raise ApiError("服务端网关拒绝访问（HTTP 403）", status_code=403)
         if response.status_code in (401, 403):
             raise NotAuthenticatedError("登录已过期或凭据无效")
         if response.status_code == 404:

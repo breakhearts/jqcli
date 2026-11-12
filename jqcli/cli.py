@@ -66,10 +66,11 @@ def main(
     """聚宽策略、回测、模拟盘与研究工作区管理命令行工具。"""
     load_env_file(env_file)
     config = load_config(config_path)
-    resolved_token, resolved_cookie = resolve_credentials(config, token=token, cookie=cookie)
+    api_base = api_base or config.api_base
+    resolved_token, resolved_cookie = resolve_credentials(config, token=token, cookie=cookie, api_base=api_base)
     ctx.obj = AppContext(
         config=config,
-        api_base=api_base or config.api_base,
+        api_base=api_base,
         token=resolved_token,
         cookie=resolved_cookie,
         output_format=output_format or str(config.data.get("default_format") or "table"),
