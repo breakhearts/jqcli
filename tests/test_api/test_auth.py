@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from jqcli.api.auth import extract_page_token, login_with_password
+from jqcli.api.auth import extract_page_token, login_with_password, reusable_session
 from jqcli.errors import ApiError
 
 
@@ -46,4 +46,22 @@ def test_login_with_password_failure(monkeypatch):
 
     with pytest.raises(ApiError):
         login_with_password("https://example.test", "u", "p")
+
+
+@pytest.mark.parametrize(("is_login", "expected"), [(0, None), (1, "sid=rotated")])
+def test_reusable_session_checks_login_and_preserves_rotated_cookie(monkeypatch, is_login, expected):
+    def handler(request):
+        assert request.url.path == "/user/index/isLogin"
+        assert request.headers["cookie"] == "sid=stored"
+        return httpx.Response(
+            200, json={"code": "00000", "data": {"isLogin": is_login}}, headers={"set-cookie": "sid=rotated; Path=/"}
+        )
+
+    class FakeClient(httpx.Client):
+        def __init__(self, *args, **kwargs):
+            kwargs["transport"] = httpx.MockTransport(handler)
+            super().__init__(*args, **kwargs)
+
+    monkeypatch.setattr("jqcli.api.auth.httpx.Client", FakeClient)
+    assert reusable_session("sid=stored", timeout=30) == expected
 

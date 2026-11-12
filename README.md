@@ -101,9 +101,9 @@ jqcli --format json auth status
 }
 ```
 
-### auth login
+### auth login（默认密码登录）
 
-使用真实聚宽登录接口登录并保存 cookie。
+`jqcli auth login` 默认使用账号和密码登录聚宽，并保存会话 Cookie。
 
 ```bash
 jqcli --env-file .env --format json auth login
@@ -125,6 +125,18 @@ printf '%s' "$JQ_PASSWORD" | jqcli --format json auth login --username user@exam
   "credential": "cookie"
 }
 ```
+
+### 手机验证码登录（备选）
+
+```bash
+python -m pip install "jqcli[sms]"
+python -m playwright install chromium
+jqcli auth login --sms
+```
+
+从源码安装时使用 `python -m pip install -e ".[sms]"`。首次运行时，直接在打开的聚宽页面填写中国大陆手机号、同意协议、完成滑块验证并输入短信验证码。也可用 `--phone` 预填号码。
+
+登录成功后，jqcli 将手机号和会话 Cookie 保存到本地配置。其他 jqcli 命令会直接使用已保存的会话。再次运行 `jqcli auth login --sms` 会先检查会话是否仍有效，只有失效时才会打开浏览器并预填号码。短信验证码不会保存。`jqcli auth logout` 清除会话并保留手机号。显式指定的凭据仍遵循上文的优先级。
 
 ### auth import-token
 

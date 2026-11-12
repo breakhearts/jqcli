@@ -98,6 +98,12 @@ class Config:
         cookie = self.data.get("cookie")
         return str(cookie) if cookie else None
 
+    def cookie_for(self, api_base: str) -> str | None:
+        origin = self.data.get("sms_session_origin")
+        if origin and api_base.rstrip("/") != origin:
+            return None
+        return self.cookie
+
     def save(self) -> None:
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -122,9 +128,11 @@ def load_config(path: str | Path | None = None) -> Config:
     return Config(path=config_path, data=data)
 
 
-def resolve_credentials(config: Config, token: str | None = None, cookie: str | None = None) -> tuple[str | None, str | None]:
+def resolve_credentials(
+    config: Config, token: str | None = None, cookie: str | None = None, *, api_base: str | None = None
+) -> tuple[str | None, str | None]:
     resolved_token = os.environ.get("JQCLI_TOKEN") or token or config.token
-    resolved_cookie = os.environ.get("JQCLI_COOKIE") or cookie or config.cookie
+    resolved_cookie = os.environ.get("JQCLI_COOKIE") or cookie or config.cookie_for(api_base or config.api_base)
     return resolved_token, resolved_cookie
 
 

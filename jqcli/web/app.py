@@ -37,8 +37,8 @@ def create_app(config: dict[str, Any] | None = None) -> Flask:
     manager_dir.mkdir(parents=True, exist_ok=True)
     load_env_file(app.config.get("JQCLI_ENV_FILE"))
     jq_config = load_config(app.config.get("JQCLI_CONFIG_PATH"))
-    token, cookie = resolve_credentials(jq_config)
     app.config["JQCLI_API_BASE"] = app.config.get("JQCLI_API_BASE") or jq_config.api_base
+    token, cookie = resolve_credentials(jq_config, api_base=app.config["JQCLI_API_BASE"])
     app.config["JQCLI_TIMEOUT"] = float(app.config.get("JQCLI_TIMEOUT") or jq_config.timeout)
     app.config["JQCLI_TOKEN"] = app.config.get("JQCLI_TOKEN") or token
     app.config["JQCLI_COOKIE"] = app.config.get("JQCLI_COOKIE") or cookie
